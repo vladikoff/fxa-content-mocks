@@ -8,8 +8,6 @@
   },
   "license": "MPL 2.0",
   "dependencies": {
-    "express": "^4.0.0",
-    "request": "^2.34.0",
-    "eight-track": "^1.7.0"
+    "http-proxy": "^1.1.0"
   }
 }
