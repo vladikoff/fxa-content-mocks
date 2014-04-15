@@ -16,15 +16,16 @@ var path = require('path');
 
     self.responses = [];
     self.toRespond = [];
+    self.servers = [];
 
-    proxies.forEach(function(proxyConfig) {
+    proxies.forEach(function (proxyConfig) {
 
       var proxy = new httpProxy.createProxyServer({
         target: proxyConfig.hostTarget
       });
 
-      http.createServer(function (req, res) {
-        if(self.toRespond && self.toRespond.length > 0) {
+      var server = http.createServer(function (req, res) {
+        if (self.toRespond && self.toRespond.length > 0) {
           var fakeResponse = self.toRespond.shift();
           fakeResponse.response.headers['content-encoding'] = 'identity';
           res.writeHead(200, fakeResponse.response.headers);
@@ -35,6 +36,7 @@ var path = require('path');
         }
       }).listen(proxyConfig.proxyPort);
 
+      self.servers.push(server);
 
       proxy.on('proxyRes', function (res) {
         var chunks = [];
@@ -50,7 +52,8 @@ var path = require('path');
             zlib.gunzip(buffer, function (err, body) {
               try {
                 body = JSON.parse(body);
-              } catch (e) { }
+              } catch (e) {
+              }
 
               self.responses.push({
                 request: {
@@ -69,7 +72,8 @@ var path = require('path');
             var body = buffer;
             try {
               body = JSON.parse(buffer);
-            } catch (e) { }
+            } catch (e) {
+            }
 
             self.responses.push({
               request: {
@@ -82,40 +86,40 @@ var path = require('path');
               }
             });
           }
-
-
-
         });
-
       });
 
 
-      self.mockResponses = function(test) {
-        var filePath = path.join(opts.directory, test.name);
-        var exists = fs.existsSync(filePath);
+      self.mockResponses = function (test, enable) {
+        if (enable) {
+          var testName = test.name.replace(/ /g, '_') + '.json';
+          var filePath = path.join(opts.directory, testName);
+          var exists = fs.existsSync(filePath);
 
-        if (exists) {
-          self.toRespond = JSON.parse(fs.readFileSync(filePath));
-        } else {
-          throw new Error('mocks not found');
+          if (exists) {
+            self.toRespond = JSON.parse(fs.readFileSync(filePath));
+          } else {
+            throw new Error('mocks not found');
+          }
         }
-
-        // test.name -> name of the test
-        // send a request to proxy
-
       };
 
-      self.recordMockStop = function(test) {
-        // TODO: might need to make a directory if doesn't exist.
-        fs.writeFileSync(path.join(opts.directory, test.name), JSON.stringify(self.responses, null, 4));
-        // clear responses
-        self.responses = [];
+      self.recordMockStop = function (test, enable) {
+        if (enable && self.responses.length > 0) {
+          var testName = test.name.replace(/ /g, '_') + '.json';
+          // TODO: might need to make a directory if doesn't exist.
+          fs.writeFileSync(path.join(opts.directory, testName), JSON.stringify(self.responses, null, 4));
+          // clear responses
+          self.responses = [];
+        }
       };
 
-
-
-
-    // end for each
+      self.close = function() {
+        self.servers.forEach(function(server) {
+          server.close();
+        });
+      };
+      // end for each
     });
 
   };
