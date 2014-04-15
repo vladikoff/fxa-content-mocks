@@ -25,13 +25,17 @@ var path = require('path');
       });
 
       var server = http.createServer(function (req, res) {
+        // if we have a saved response to this request based on the test name.
         if (self.toRespond && self.toRespond.length > 0) {
+          // use a fake response one by one.
           var fakeResponse = self.toRespond.shift();
           fakeResponse.response.headers['content-encoding'] = 'identity';
           res.writeHead(200, fakeResponse.response.headers);
 
           res.end(JSON.stringify(fakeResponse.response.body));
-        } else {
+        }
+        // else we forward it via the proxy.
+        else {
           proxy.web(req, res);
         }
       }).listen(proxyConfig.proxyPort);
@@ -90,16 +94,16 @@ var path = require('path');
       });
 
 
-      self.mockResponses = function (test, enable) {
+      self.mockResponses = function (suite, enable) {
         if (enable) {
-          var testName = test.name.replace(/ /g, '_') + '.json';
-          var filePath = path.join(opts.directory, testName);
+          var suiteName = suite.name.replace(/ /g, '_') + '.json';
+          var filePath = path.join(opts.directory, suiteName);
           var exists = fs.existsSync(filePath);
 
           if (exists) {
             self.toRespond = JSON.parse(fs.readFileSync(filePath));
           } else {
-            throw new Error('mocks not found');
+            //throw new Error('mocks not found');
           }
         }
       };
