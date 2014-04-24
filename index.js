@@ -24,15 +24,32 @@ var path = require('path');
         target: proxyConfig.hostTarget
       });
 
+      console.log('Proxy Started on', proxyConfig.proxyPort);
+
       var server = http.createServer(function (req, res) {
         // if we have a saved response to this request based on the test name.
         if (self.toRespond && self.toRespond.length > 0) {
-          // use a fake response one by one.
-          var fakeResponse = self.toRespond.shift();
-          fakeResponse.response.headers['content-encoding'] = 'identity';
-          res.writeHead(200, fakeResponse.response.headers);
 
-          res.end(JSON.stringify(fakeResponse.response.body));
+          if (req.method === 'OPTIONS') {
+            res.setHeader('access-control-allow-origin', '*');
+            res.setHeader('access-control-max-age', '86400');
+            res.setHeader('access-control-allow-methods', 'GET, HEAD, POST, PUT, DELETE, OPTIONS');
+            res.setHeader('access-control-allow-headers', 'Authorization, Content-Type, If-None-Match');
+            res.setHeader('access-control-expose-headers', 'WWW-Authenticate, Server-Authorization, Timestamp, Accept-Language');
+            res.writeHead(200);
+            res.end();
+          } else {
+
+            // use a fake response one by one.
+            var fakeResponse = self.toRespond.shift();
+            fakeResponse.response.headers['content-encoding'] = 'identity';
+            res.writeHead(200, fakeResponse.response.headers);
+
+            res.end(JSON.stringify(fakeResponse.response.body));
+
+            console.log('Asked for', req.url);
+            console.log('Responding for', fakeResponse.response.body);
+          }
         }
         // else we forward it via the proxy.
         else {
@@ -59,16 +76,7 @@ var path = require('path');
               } catch (e) {
               }
 
-              self.responses.push({
-                request: {
-                  method: res.req.method,
-                  path: res.req.path
-                },
-                response: {
-                  headers: res.headers,
-                  body: body
-                }
-              });
+              self._collectResponse(res, body);
             });
           }
           // else no encoding
@@ -79,37 +87,45 @@ var path = require('path');
             } catch (e) {
             }
 
-            self.responses.push({
-              request: {
-                method: res.req.method,
-                path: res.req.path
-              },
-              response: {
-                headers: res.headers,
-                body: body
-              }
-            });
+            self._collectResponse(res, body);
+
           }
         });
       });
 
+      self._collectResponse = function (res, body) {
+        if (res.req.method !== 'OPTIONS') {
 
-      self.mockResponses = function (suite, enable) {
-        if (enable) {
-          var suiteName = suite.name.replace(/ /g, '_') + '.json';
-          var filePath = path.join(opts.directory, suiteName);
-          var exists = fs.existsSync(filePath);
+          self.responses.push({
+            request: {
+              method: res.req.method,
+              path: res.req.path
+            },
+            response: {
+              headers: res.headers,
+              body: body
+            }
+          });
 
-          if (exists) {
-            self.toRespond = JSON.parse(fs.readFileSync(filePath));
-          } else {
-            //throw new Error('mocks not found');
-          }
         }
       };
 
-      self.recordMockStop = function (test, enable) {
-        if (enable && self.responses.length > 0) {
+
+      self.mockResponses = function (suite) {
+        var suiteName = suite.name.replace(/ /g, '_') + '.json';
+        var filePath = path.join(opts.directory, suiteName);
+        var exists = fs.existsSync(filePath);
+
+        if (exists) {
+          self.toRespond = JSON.parse(fs.readFileSync(filePath));
+        } else {
+          //throw new Error('mocks not found');
+        }
+      };
+
+      self.recordMockStop = function (test) {
+        console.log('Recording Mock', self.responses);
+        if (self.responses.length > 0) {
           var testName = test.name.replace(/ /g, '_') + '.json';
           // TODO: might need to make a directory if doesn't exist.
           fs.writeFileSync(path.join(opts.directory, testName), JSON.stringify(self.responses, null, 4));
