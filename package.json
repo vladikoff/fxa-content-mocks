@@ -1,13 +1,10 @@
 {
-  "name": "fxa-mock-generator",
+  "name": "fxa-content-mocks",
+  "private": false,
   "version": "0.1.0",
-  "description": "",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "license": "MPL 2.0",
+  "license": "MIT",
   "dependencies": {
-    "http-proxy": "^1.1.0"
+    "http-proxy": "^1.1.4"
   }
 }
