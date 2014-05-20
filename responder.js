@@ -4,7 +4,6 @@ var path = require('path');
 var url = require('url');
 
 module.exports = function (responders, options) {
-  console.log('Init');
   options = options || {};
   var directory = options.directory || path.join(process.cwd(), 'mocks');
   var responses = [];
