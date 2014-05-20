@@ -107,7 +107,6 @@ module.exports = function (proxies, opts) {
   self.recordMockStop = function (test) {
     try {
       Object.keys(self.responses).forEach(function (hostTarget) {
-        console.log('Recording Mocks', self.responses);
 
         if (self.responses[hostTarget].length > 0) {
           var server = require('url').parse(hostTarget).host.replace(/:/g, '_').replace(/\./g, '_');
