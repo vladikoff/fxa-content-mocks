@@ -13,25 +13,16 @@ module.exports = function (responders, options) {
     var port = url.parse(responder.host).port;
 
     var server = http.createServer(function (req, res) {
-      var responderMocks = responses[responder.host];
+      setTimeout(function () {
+        var responderMocks = responses[responder.host];
 
-      if (req.method === 'OPTIONS') {
-        res.setHeader('access-control-allow-origin', '*');
-        res.setHeader('access-control-max-age', '86400');
-        res.setHeader('access-control-allow-methods', 'GET, HEAD, POST, PUT, DELETE, OPTIONS');
-        res.setHeader('access-control-allow-headers', 'Authorization, Content-Type, If-None-Match');
-        res.setHeader('access-control-expose-headers', 'WWW-Authenticate, Server-Authorization, Timestamp, Accept-Language');
-        res.writeHead(200);
-        res.end();
-      } else {
-        // use a fake response one by one.
-        var fakeResponse = responderMocks.shift();
-        fakeResponse.response.headers['content-encoding'] = 'identity';
+          // use a fake response one by one.
+          var fakeResponse = responderMocks.shift();
+          fakeResponse.response.headers['content-encoding'] = 'identity';
 
-        res.writeHead(200, fakeResponse.response.headers);
-        res.end(JSON.stringify(fakeResponse.response.body));
-
-      }
+          res.writeHead(200, fakeResponse.response.headers);
+          res.end(JSON.stringify(fakeResponse.response.body));
+      }, 200);
     }).listen(port);
 
     servers.push(server);
@@ -41,7 +32,7 @@ module.exports = function (responders, options) {
     respond: function (suite) {
       // load JSON mocks for each server
       // File format: 127_0_0_1_9000_complete_sign_up.json
-      responders.forEach(function(responder) {
+      responders.forEach(function (responder) {
         var host = responder.host;
         var port = url.parse(host).port;
         var hostname = url.parse(host).hostname.replace(/\./g, '_');
@@ -58,8 +49,8 @@ module.exports = function (responders, options) {
         }
       });
     },
-    close: function() {
-      servers.forEach(function(server) {
+    close: function () {
+      servers.forEach(function (server) {
         server.close();
       });
     }

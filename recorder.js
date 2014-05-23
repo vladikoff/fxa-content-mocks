@@ -1,5 +1,6 @@
 var fs = require('fs');
 var httpProxy = require('http-proxy');
+var http = require('http');
 var zlib = require('zlib');
 var path = require('path');
 
@@ -7,29 +8,24 @@ module.exports = function (proxies, opts) {
   var self = this;
 
   self.responses = {};
-  self.toRespond = [];
   self.servers = [];
 
   proxies.forEach(function (proxyConfig) {
 
-    var proxy = new httpProxy.createProxyServer({
-      target: proxyConfig.hostTarget
-    });
+    var proxy = new httpProxy.createProxyServer({});
     proxy.target = proxyConfig.hostTarget;
     self.responses[proxy.target] = [];
 
+    http.createServer(function (req, res) {
+      // This simulate an operation that take 500ms in execute
+      setTimeout(function () {
+        proxy.web(req, res, {
+          target: proxyConfig.hostTarget
+        });
+      }, 400);
+    }).listen(proxyConfig.proxyPort);
+
     console.log('Proxy Started on', proxyConfig.proxyPort, 'for', proxyConfig.hostTarget);
-    proxy.listen(proxyConfig.proxyPort);
-
-//
-// Listen for the `error` event on `proxy`.
-    proxy.on('error', function (err, req, res) {
-      res.writeHead(500, {
-        'Content-Type': 'text/plain'
-      });
-
-      res.end('Something went wrong. And we are reporting a custom error message.');
-    });
 
 //
 // Listen for the `proxyRes` event on `proxy`.
@@ -73,8 +69,9 @@ module.exports = function (proxies, opts) {
   });
 
   self._collectResponse = function (res, body, target) {
-    if (res.req.method !== 'OPTIONS') {
+    //if (res.req.method !== 'OPTIONS') {
       console.log('saving', res.req.path);
+      console.log(target);
 
       self.responses[target].push({
         request: {
@@ -86,22 +83,6 @@ module.exports = function (proxies, opts) {
           body: body
         }
       });
-
-    } else {
-      console.log('Ignoring OPTIONS');
-    }
-  };
-
-  self.mockResponses = function (suite) {
-    var suiteName = suite.name.replace(/ /g, '_') + '.json';
-    var filePath = path.join(opts.directory, suiteName);
-    var exists = fs.existsSync(filePath);
-
-    if (exists) {
-      self.toRespond = JSON.parse(fs.readFileSync(filePath));
-    } else {
-      //throw new Error('mocks not found');
-    }
   };
 
   self.recordMockStop = function (test) {
